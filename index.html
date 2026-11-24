@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A8BD0">
+<title>타슈로 — 타슈로 가는 대전의 길</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header class="appbar">
+    <img src="assets/logo.png" alt="타슈">
+    <span class="t">타슈로</span>
+    <span class="sample">재고·버스 샘플</span>
+    <button id="info" class="ic" aria-label="정보">☰</button>
+  </header>
+
+  <div id="top">
+    <div class="search">
+      <div class="row"><span class="dot" style="background:var(--blue)"></span>
+        <input id="from" placeholder="출발지" autocomplete="off">
+        <button id="loc" class="x" aria-label="현재 위치로">📍</button></div>
+      <div class="row"><span class="dot" style="background:var(--orange)"></span>
+        <input id="to" placeholder="어디로 갈까요?" autocomplete="off">
+        <button id="swap" class="x" aria-label="출발·도착 바꾸기">⇅</button></div>
+      <ul id="sugg" hidden></ul>
+    </div>
+    <div class="seg" id="seg">
+      <button data-mode="tashu" class="on">🚲 타슈 모드</button>
+      <button data-mode="mixed">🚲+🚌 혼합 모드</button>
+    </div>
+  </div>
+
+  <div id="banner" class="banner" hidden></div>
+  <div id="stage"><div id="map"></div></div>
+
+  <section id="sheet"><div class="grab" data-act="fold"></div><div id="sheetBody"></div></section>
+  <section id="fav" hidden></section>
+
+  <nav class="tabbar">
+    <button data-tab="map" class="on"><span>🗺️</span>지도</button>
+    <button data-tab="route"><span>🧭</span>길찾기</button>
+    <button data-tab="event"><span>🎪</span>행사</button>
+    <button data-tab="fav"><span>⭐</span>즐겨찾기</button>
+  </nav>
+  <div id="toast" hidden></div>
+
+  <dialog id="about">
+    <h3>타슈로(路)</h3>
+    <p>타슈 대여소와 대여 가능 대수를 반영한 대전 전용 길찾기입니다.</p>
+    <p class="note">대여소 위치는 실제 타슈 대여소, 버스 노선·정류소는 대전 버스정보(BIS)를 씁니다. 버스 도착은 서버(<code>node server.js</code>)로 실행하면 <b>실시간</b>, 아니면 배차간격 <b>추정</b>입니다. <b>대여 가능 대수는 추정값</b>이고 행사 일정은 예시입니다.</p>
+    <div class="pal"><i style="background:#0A8BD0"></i>타슈·여유 <i style="background:#F2A83A"></i>버스·부족·행사 <i style="background:#B7C1CB"></i>없음</div>
+    <button class="btn" onclick="this.closest('dialog').close()">닫기</button>
+  </dialog>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

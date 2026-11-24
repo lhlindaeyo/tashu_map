@@ -1,0 +1,5 @@
+{
+  "name": "tashu-map",
+  "private": true,
+  "scripts": { "start": "node server.js" }
+}
