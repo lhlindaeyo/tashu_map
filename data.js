@@ -118,7 +118,7 @@ const TASHU = (() => {
   //       실시간 재고 API 를 받으면 아래 map() 안의 bikes 를 그 값으로 바꾸세요.
   const hash = s => { let x = 0; for (const c of s) x = (x * 31 + c.charCodeAt(0)) >>> 0; return x; };
   const guessType = n => /아파트|APT/i.test(n) ? 'resid' : /대학|학교|캠퍼스/.test(n) ? 'campus' : /공원|수목원|천변|체육/.test(n) ? 'park' : 'hub';
-  const flags = { realStations: false, realLines: false, liveArrival: false };
+  const flags = { realStations: false, realLines: false, liveArrival: false, liveBikes: false };
   const getJson = async url => { const r = await fetch(url); if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); };
 
   async function load() {
@@ -159,5 +159,40 @@ const TASHU = (() => {
     } catch { return null; }
   }
 
-  return { CONFIG, stations, places, lines, events, forecast, meters, load, arrivals, flags };
+  // 타슈 대여소 실시간 대여 가능 수 (대전교통공사 Open API ← server.js 의 /api/stations).
+  // 키가 없거나 호출이 실패하면 false 를 돌려주고, 기존 추정값을 그대로 쓴다.
+  const nameKey = s => s.replace(/[\s()·_.,\-[\]]/g, '');   // 공백·괄호·구두점을 빼고 이름을 비교
+  async function liveBikes() {
+    let rows;
+    try { const r = await fetch('/api/stations', { signal: AbortSignal.timeout(10000) }); if (!r.ok) return false; rows = await r.json(); }
+    catch { return false; }
+    if (!Array.isArray(rows) || !rows.length) return false;
+
+    const byName = new Map(stations.filter(s => !s.temp).map(s => [nameKey(s.name), s]));
+    const seen = new Set(), added = [];
+    let matched = 0;
+    for (const r of rows) {
+      const s = byName.get(nameKey(r.name));
+      if (s && !seen.has(s.id)) {                       // 이름이 같은 대여소: 대수와 (더 정확한) 좌표를 API 값으로
+        seen.add(s.id); matched++;
+        Object.assign(s, { bikes: r.bikes, lat: r.lat, lng: r.lng, live: true });
+        s.cap = Math.max(s.cap, r.bikes + 2);
+      } else {                                          // CSV 에 없던 대여소: 새로 추가
+        const cap = Math.max(12 + hash(r.id) % 14, r.bikes + 2);
+        added.push({ id: 'T' + r.id, name: r.name, lat: r.lat, lng: r.lng, cap, type: guessType(r.name), bikes: r.bikes, live: true });
+      }
+    }
+    // API 가 거의 전체 대여소를 주면, 짝을 못 찾은 추정 대여소(주소 변환 오차 등)는 중복이므로 뺀다. 행사 거점은 남긴다.
+    const real = stations.filter(s => !s.temp);
+    if (rows.length >= real.length * 0.7) {
+      const keep = new Set(events.flatMap(e => e.hubs.map(h => h.id)));
+      for (let i = stations.length - 1; i >= 0; i--) { const s = stations[i]; if (!s.temp && !s.live && !keep.has(s.id)) stations.splice(i, 1); }
+    }
+    stations.push(...added);
+    flags.liveBikes = true;
+    console.info('타슈 실시간 대수:', rows.length + '개 중 ' + matched + '개가 이름으로 짝지어짐, ' + added.length + '개 새로 추가');
+    return true;
+  }
+
+  return { CONFIG, stations, places, lines, events, forecast, meters, load, arrivals, liveBikes, flags };
 })();

@@ -52,7 +52,7 @@
   <dialog id="about">
     <h3>타슈로(路)</h3>
     <p>타슈 대여소와 대여 가능 대수를 반영한 대전 전용 길찾기입니다.</p>
-    <p class="note">대여소 위치는 실제 타슈 대여소, 버스 노선·정류소는 대전 버스정보(BIS)를 씁니다. 버스 도착은 서버(<code>node server.js</code>)로 실행하면 <b>실시간</b>, 아니면 배차간격 <b>추정</b>입니다. <b>대여 가능 대수는 추정값</b>이고 행사 일정은 예시입니다.</p>
+    <p class="note">대여소 위치는 실제 타슈 대여소, 버스 노선·정류소는 대전 버스정보(BIS)를 씁니다. 버스 도착은 서버(<code>node server.js</code>)로 실행하면 <b>실시간</b>, 아니면 배차간격 <b>추정</b>입니다. <b>대여 가능 대수는 타슈 API 키가 있으면 실시간, 없으면 추정값</b>이고 행사 일정은 예시입니다.</p>
     <div class="pal"><i style="background:#0A8BD0"></i>타슈·여유 <i style="background:#F2A83A"></i>버스·부족·행사 <i style="background:#B7C1CB"></i>없음</div>
     <button class="btn" onclick="this.closest('dialog').close()">닫기</button>
   </dialog>

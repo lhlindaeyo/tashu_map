@@ -475,7 +475,15 @@ map.on('click', e => {
   setPoint(state.field, { name: '지도에서 선택한 위치', lat: e.latlng.lat, lng: e.latlng.lng });
 });
 
-T.load().then(({ flags }) => {
-  $('.sample').textContent = flags.realLines ? '재고 추정값' : '재고·버스 샘플';
+const setPill = () => { $('.sample').textContent = !T.flags.realLines ? '재고·버스 샘플' : T.flags.liveBikes ? '대수 실시간' : '재고 추정값'; };
+async function refreshLive() {                          // 타슈 실시간 대수 (키가 없으면 조용히 추정값 유지)
+  if (!(await T.liveBikes())) return;
+  setPill();
+  if (state.tab === 'map' || state.tab === 'fav') render();
+}
+T.load().then(() => {
+  setPill();
   render({ fit: true });
+  refreshLive();
+  setInterval(() => { if (!document.hidden) refreshLive(); }, 60000);
 });
