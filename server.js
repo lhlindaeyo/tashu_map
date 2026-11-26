@@ -64,14 +64,14 @@ http.createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json;charset=utf-8');
     if (!/^\d{5,9}$/.test(stop)) { res.writeHead(400); return res.end('{"error":"bad stop"}'); }
     if (!rawKey) { res.writeHead(503); return res.end('{"error":"no key"}'); }
-    try { res.writeHead(200); res.end(JSON.stringify(await arrivals(stop))); }
+    try { const body = JSON.stringify(await arrivals(stop)); res.writeHead(200); res.end(body); }   // 먼저 결과를 받은 뒤에 헤더를 보낸다(실패 시 502를 보내기 위해)
     catch (e) { res.writeHead(502); res.end(JSON.stringify({ error: e.message })); }
     return;
   }
   if (url.pathname === '/api/stations') {
     res.setHeader('content-type', 'application/json;charset=utf-8');
     if (!tashuKey) { res.writeHead(503); return res.end('{"error":"no key"}'); }
-    try { res.writeHead(200); res.end(JSON.stringify(await tashuStations())); }
+    try { const body = JSON.stringify(await tashuStations()); res.writeHead(200); res.end(body); }
     catch (e) { res.writeHead(502); res.end(JSON.stringify({ error: e.message })); }
     return;
   }
