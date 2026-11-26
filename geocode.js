@@ -10,8 +10,20 @@ if (!env.KAKAO_REST_KEY) { console.error('.env 에 KAKAO_REST_KEY 를 먼저 넣
 const dir = path.join(__dirname, 'data');
 const csv = fs.readdirSync(dir).find(f => f.endsWith('.csv'));
 const out = path.join(dir, 'stations.json');
+// 따옴표로 감싼 칸 안의 쉼표(예: "관저동 신선마을(213동, 관저네거리방면)")를 칸 구분으로 오해하지 않는 CSV 줄 분리
+const splitCsv = l => {
+  const f = []; let cur = '', q = false;
+  for (let i = 0; i < l.length; i++) {
+    const c = l[i];
+    if (q) { if (c === '"') { if (l[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { f.push(cur); cur = ''; }
+    else cur += c;
+  }
+  return [...f, cur];
+};
 const rows = new TextDecoder('euc-kr').decode(fs.readFileSync(path.join(dir, csv))).split(/\r?\n/).slice(1)
-  .filter(Boolean).map(l => { const [id, name, district, dong, ...addr] = l.split(','); return { id, name, district, dong, address: addr.join(',').trim() }; });
+  .filter(Boolean).map(l => { const [id, name, district, dong, address] = splitCsv(l).map(x => x.trim()); return { id, name, district, dong, address }; });
 
 const done = new Map((fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : []).map(s => [s.id, s]));
 const call = async (kind, q) => {
@@ -24,7 +36,8 @@ const call = async (kind, q) => {
 (async () => {
   let n = 0, fail = [];
   for (const s of rows) {
-    if (done.get(s.id)?.lat) continue;
+    const old = done.get(s.id);
+    if (old?.lat && old.name === s.name && old.address === s.address) continue;   // 이미 변환했고 CSV 내용이 같으면 건너뜀
     let p = null;
     try { p = await call('address', s.address) || await call('keyword', '대전 ' + s.name.replace(/\(.*?\)/g, '')); }
     catch (e) { console.error(e.message); process.exit(1); }

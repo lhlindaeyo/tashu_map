@@ -161,36 +161,41 @@ const TASHU = (() => {
 
   // 타슈 대여소 실시간 대여 가능 수 (대전교통공사 Open API ← server.js 의 /api/stations).
   // 키가 없거나 호출이 실패하면 false 를 돌려주고, 기존 추정값을 그대로 쓴다.
-  const nameKey = s => s.replace(/[\s()·_.,\-[\]]/g, '');   // 공백·괄호·구두점을 빼고 이름을 비교
+  const nameKey = s => s.replace(/[\s()·_.,\-[\]]/g, '');   // 공백·괄호·구두점을 빼고 이름을 비교 (ID 로 못 맞췄을 때만 사용)
+  const skipName = /정비대기|관제/;                          // 정비·관제용 대여소는 지도에 올리지 않는다
   async function liveBikes() {
     let rows;
     try { const r = await fetch('/api/stations', { signal: AbortSignal.timeout(10000) }); if (!r.ok) return false; rows = await r.json(); }
     catch { return false; }
     if (!Array.isArray(rows) || !rows.length) return false;
 
-    const byName = new Map(stations.filter(s => !s.temp).map(s => [nameKey(s.name), s]));
+    // 짝짓기: 1) 대여소 ID(ST0003 형식, CSV 와 API 가 같은 번호를 씀)  2) 안 맞으면 이름
+    const mine = stations.filter(s => !s.temp);
+    const byId = new Map(mine.map(s => [s.id, s])), byName = new Map(mine.map(s => [nameKey(s.name), s]));
     const seen = new Set(), added = [];
-    let matched = 0;
+    let byIdN = 0, byNameN = 0, skipped = 0;
     for (const r of rows) {
-      const s = byName.get(nameKey(r.name));
-      if (s && !seen.has(s.id)) {                       // 이름이 같은 대여소: 대수와 (더 정확한) 좌표를 API 값으로
-        seen.add(s.id); matched++;
-        Object.assign(s, { bikes: r.bikes, lat: r.lat, lng: r.lng, live: true });
+      if (skipName.test(r.name)) { skipped++; continue; }
+      let s = byId.get(r.id);
+      if (s) byIdN++;
+      else { s = byName.get(nameKey(r.name)); if (s) byNameN++; }
+      if (s && !seen.has(s)) {                          // 대수, 이름, (더 정확한) 좌표를 API 값으로
+        seen.add(s);
+        Object.assign(s, { name: r.name, bikes: r.bikes, lat: r.lat, lng: r.lng, live: true });
         s.cap = Math.max(s.cap, r.bikes + 2);
-      } else {                                          // CSV 에 없던 대여소: 새로 추가
+      } else if (!s) {                                  // CSV 에 없던 대여소: 새로 추가
         const cap = Math.max(12 + hash(r.id) % 14, r.bikes + 2);
-        added.push({ id: 'T' + r.id, name: r.name, lat: r.lat, lng: r.lng, cap, type: guessType(r.name), bikes: r.bikes, live: true });
+        added.push({ id: r.id, name: r.name, lat: r.lat, lng: r.lng, cap, type: guessType(r.name), bikes: r.bikes, live: true });
       }
     }
-    // API 가 거의 전체 대여소를 주면, 짝을 못 찾은 추정 대여소(주소 변환 오차 등)는 중복이므로 뺀다. 행사 거점은 남긴다.
-    const real = stations.filter(s => !s.temp);
-    if (rows.length >= real.length * 0.7) {
+    // API 가 거의 전체 대여소를 주면, 짝을 못 찾은 추정 대여소(없어졌거나 주소 변환 오차)는 뺀다. 행사 거점은 남긴다.
+    if (rows.length >= mine.length * 0.7) {
       const keep = new Set(events.flatMap(e => e.hubs.map(h => h.id)));
       for (let i = stations.length - 1; i >= 0; i--) { const s = stations[i]; if (!s.temp && !s.live && !keep.has(s.id)) stations.splice(i, 1); }
     }
     stations.push(...added);
     flags.liveBikes = true;
-    console.info('타슈 실시간 대수:', rows.length + '개 중 ' + matched + '개가 이름으로 짝지어짐, ' + added.length + '개 새로 추가');
+    console.info(`타슈 실시간 대수: API ${rows.length}개 → ID로 ${byIdN}개, 이름으로 ${byNameN}개 짝지음, ${added.length}개 새로 추가, ${skipped}개 제외(정비·관제)`);
     return true;
   }
 
